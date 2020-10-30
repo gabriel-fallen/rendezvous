@@ -74,7 +74,8 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             RichText(
               text: TextSpan(
-                style: DefaultTextStyle.of(context).style,
+                // style: DefaultTextStyle.of(context).style,
+                style: TextStyle(color: Colors.black),
                 children: [
                   TextSpan(
                     text: contents,
@@ -89,9 +90,12 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  void _loadPage(String path) {
+  void _loadPage(String page) async {
+    final uri = Uri.parse(page);
+    final request = new Request(uri.host, uri.path + uri.fragment);
+    final response = await request.send();
     setState(() {
-      contents = path;
+      contents = response.body;
     });
   }
 }
