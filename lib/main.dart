@@ -72,18 +72,24 @@ class _MyHomePageState extends State<MyHomePage> {
               controller: _controller,
               onSubmitted: _loadPage,
             ),
-            RichText(
-              text: TextSpan(
-                // style: DefaultTextStyle.of(context).style,
-                style: TextStyle(color: Colors.black),
-                children: [
-                  TextSpan(
-                    text: contents,
-                    style: TextStyle(fontWeight: FontWeight.bold)
-                  )
-                ]
+            Expanded(
+              flex: 1,
+              child: SingleChildScrollView(
+                child: RichText(
+                  overflow: TextOverflow.visible,
+                  text: TextSpan(
+                    // style: DefaultTextStyle.of(context).style,
+                    style: TextStyle(color: Colors.black),
+                    children: [
+                      TextSpan(
+                        text: contents,
+                        // style: TextStyle(fontWeight: FontWeight.bold)
+                      )
+                    ]
+                  ),
+                ),
               ),
-            ),
+            )
           ],
         ),
       ),
