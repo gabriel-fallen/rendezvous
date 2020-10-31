@@ -95,7 +95,10 @@ class _MyHomePageState extends State<MyHomePage> {
     final request = new Request(uri.host, uri.path + uri.fragment);
     final response = await request.send();
     setState(() {
-      contents = response.body;
+      if (response.body is Gemini)
+        contents = (response.body as Gemini).contents.map((l) => l.line).join('\n');
+      else
+        contents = 'Unknown format';
     });
   }
 }
