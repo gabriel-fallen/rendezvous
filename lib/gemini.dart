@@ -19,7 +19,7 @@ class Request {
     developer.log('Sending Gemini reuest: ' + url);
     socket.write(url);
     final response = await Response.fromStream(socket);
-    response.url = url;
+    response.url = url.trim();
     await socket.close();
     return response;
   }

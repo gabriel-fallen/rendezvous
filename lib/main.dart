@@ -45,8 +45,12 @@ const String serverError = 'Internal server error';
 
 class _MyHomePageState extends State<MyHomePage> {
   TextEditingController _controller;
-  String _currentHost = '';
   List<TextSpan> _contents;
+
+  // navigation state
+  String _currentHost = '';
+  List<String> _history = [];
+
 
   void initState() {
     super.initState();
@@ -71,9 +75,19 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            TextField(
-              controller: _controller,
-              onSubmitted: _loadPage,
+            Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.arrow_back),
+                  onPressed: _navigateBack,
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    onSubmitted: _loadPage,
+                  ),
+                )
+              ],
             ),
             Expanded(
               flex: 1,
@@ -115,11 +129,20 @@ class _MyHomePageState extends State<MyHomePage> {
       }
 
       _controller.text = response.url;
+      _history.add(response.url);
       if (response.body is Gemini)
         _contents = _present(response.body as Gemini);
       else
         _contents = [TextSpan(text: 'Unknown format', style: TextStyle(color: Colors.red, fontSize: 16))];
     });
+  }
+
+  void _navigateBack() {
+    if (_history.isEmpty) return; // noop
+
+    final url = _history.last;
+    _history.removeLast();
+    _loadPage(url);
   }
 
   List<TextSpan> _present(Gemini page) {
