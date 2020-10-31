@@ -40,8 +40,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 // Some constants
-const String notFound = 'Page not found';
-const String serverError = 'Internal server error';
+const String notFound = 'Page not found\n';
+const String serverError = 'Internal server error\n';
 
 class _MyHomePageState extends State<MyHomePage> {
   TextEditingController _controller;
@@ -124,7 +124,10 @@ class _MyHomePageState extends State<MyHomePage> {
     final response = await request.send();
     setState(() {
       if (!response.success) {
-        _contents = [TextSpan(text: serverError, style: TextStyle(color: Colors.red, fontSize: 16))];
+        _contents = [
+          TextSpan(text: serverError, style: TextStyle(color: Colors.red, fontSize: 16)),
+          TextSpan(text: 'Status code: ' + response.code.toString() + '\n' + response.meta),
+        ];
         return;
       }
 

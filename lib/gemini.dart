@@ -30,6 +30,8 @@ class Response {
   final _Header _header;
   final Body body;
 
+  int get code => _header.code;
+  String get meta => _header.meta;
   bool get success => _header.success;
 
   Response(this._header, this.body);
@@ -57,10 +59,11 @@ class _Header {
   _Header(this.code, this.meta);
 
   static _Header parse(String line) {
-    final parts = line.split(' ');
-    final code = int.parse(parts[0]);
-    if (parts.length > 1) {
-      return _Header(code, parts[1]);
+    final spaceIndex = line.indexOf(new RegExp(r'\s+'));
+    final firstSpace = spaceIndex > 0 ? spaceIndex : line.length;
+    final code = int.parse(line.substring(0, firstSpace));
+    if (spaceIndex > 0) {
+      return _Header(code, line.substring(firstSpace).trim());
     } else {
       return _Header(code, _success(code) ? 'text/gemini; charset=utf-8' : null);
     }
