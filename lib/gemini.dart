@@ -25,7 +25,7 @@ class Request {
 
 class Response {
   final _Header _header;
-  final String body; // FIXME: parse into ADT with MIME
+  final Body body;
 
   bool get success => _header.success;
 
@@ -35,7 +35,12 @@ class Response {
     // FIXME: somehow handle binary and other formats based on response's MIME meta.
     final lines = await stream.map((list) => list.toList()).transform(utf8.decoder).transform(LineSplitter()).toList();
     final header = _Header.parse(lines[0]);
-    return Response(header, lines.skip(1).join());
+    if (header.success) {
+      final body = Gemini.parse(lines.skip(1));
+      body.mime = header.meta;
+      return Response(header, body);
+    }
+    return Response(header, null);
   }
 }
 
@@ -44,7 +49,7 @@ class _Header {
   final int code;
   final String meta;
 
-  bool get success => code >= 20 && code < 30;
+  bool get success => _success(code);
 
   _Header(this.code, this.meta);
 
@@ -54,7 +59,98 @@ class _Header {
     if (parts.length > 1) {
       return _Header(code, parts[1]);
     } else {
-      return _Header(code, null);
+      return _Header(code, _success(code) ? 'text/gemini; charset=utf-8' : null);
     }
   }
+
+  static bool _success(int code) => code >= 20 && code < 30;
+}
+
+abstract class Body {
+  String get mime;
+}
+
+class RawData extends Body {
+  final String mime;
+  final Uint8List data;
+
+  RawData(this.mime, this.data);
+}
+
+class Gemini extends Body {
+  String mime;
+  final List<GeminiLine> contents;
+
+  Gemini(this.contents);
+
+  static Gemini parse(Iterable<String> lines) {
+    final contents = <GeminiLine>[];
+    bool preformatted = false;
+    for (var line in lines) {
+      if (preformatted) {
+        if (line.startsWith('```')) {
+          preformatted = false;
+          continue;
+        }
+        contents.add(GeminiPreformatted(line));
+      } else {
+        if      (line.startsWith('=>'))  contents.add(GeminiLink.parse(line.substring(2).trim()));
+        else if (line.startsWith('###')) contents.add(GeminiHeader3(   line.substring(3).trim()));
+        else if (line.startsWith('##'))  contents.add(GeminiHeader2(   line.substring(2).trim()));
+        else if (line.startsWith('#'))   contents.add(GeminiHeader1(   line.substring(1).trim()));
+        else if (line.startsWith('*'))   contents.add(GeminiListItem(  line.substring(1).trim()));
+        else if (line.startsWith('>'))   contents.add(GeminiQuote(     line.substring(1).trim()));
+        else if (line.startsWith('```')) preformatted = true; // FIXME: handle "alt" text for preformatted lines
+        else                             contents.add(GeminiText(line.trim()));
+      }
+    }
+
+    return Gemini(contents);
+  }
+}
+
+abstract class GeminiLine {
+  final String line;
+  GeminiLine(this.line);
+}
+
+class GeminiLink extends GeminiLine {
+  final String url;
+  GeminiLink(String url, String title) : url = url, super(title);
+
+  static GeminiLink parse(String line) {
+    final spaceIndex = line.indexOf(new RegExp(r'\s+'));
+    final firstSpace = spaceIndex > 0 ? spaceIndex : line.length;
+    final url = line.substring(0, firstSpace);
+    final title = spaceIndex > 0 ? line.substring(firstSpace).trim() : url;
+    return GeminiLink(url, title);
+  }
+}
+
+class GeminiText extends GeminiLine {
+  GeminiText(String line) : super(line);
+}
+
+class GeminiPreformatted extends GeminiLine {
+  GeminiPreformatted(String line) : super(line);
+}
+
+class GeminiHeader1 extends GeminiLine {
+  GeminiHeader1(String line) : super(line);
+}
+
+class GeminiHeader2 extends GeminiLine {
+  GeminiHeader2(String line) : super(line);
+}
+
+class GeminiHeader3 extends GeminiLine {
+  GeminiHeader3(String line) : super(line);
+}
+
+class GeminiListItem extends GeminiLine {
+  GeminiListItem(String line) : super(line);
+}
+
+class GeminiQuote extends GeminiLine {
+  GeminiQuote(String line) : super(line);
 }
