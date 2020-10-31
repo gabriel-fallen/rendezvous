@@ -44,7 +44,7 @@ const String serverError = 'Internal server error';
 
 class _MyHomePageState extends State<MyHomePage> {
   TextEditingController _controller;
-  String contents = ''; // FIXME: formatting and stuff...
+  List<TextSpan> contents;
 
   void initState() {
     super.initState();
@@ -67,6 +67,7 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             TextField(
               controller: _controller,
@@ -75,17 +76,13 @@ class _MyHomePageState extends State<MyHomePage> {
             Expanded(
               flex: 1,
               child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: 5),
                 child: RichText(
                   overflow: TextOverflow.visible,
                   text: TextSpan(
                     // style: DefaultTextStyle.of(context).style,
-                    style: TextStyle(color: Colors.black),
-                    children: [
-                      TextSpan(
-                        text: contents,
-                        // style: TextStyle(fontWeight: FontWeight.bold)
-                      )
-                    ]
+                    style: TextStyle(color: Colors.black, fontSize: _baseFontSize),
+                    children: contents
                   ),
                 ),
               ),
@@ -102,9 +99,38 @@ class _MyHomePageState extends State<MyHomePage> {
     final response = await request.send();
     setState(() {
       if (response.body is Gemini)
-        contents = (response.body as Gemini).contents.map((l) => l.line).join('\n');
+        contents = _present(response.body as Gemini);
       else
-        contents = 'Unknown format';
+        contents = [TextSpan(text: 'Unknown format', style: TextStyle(color: Colors.red, fontSize: 16))];
     });
   }
+
+  static List<TextSpan> _present(Gemini page) {
+    final spans = <TextSpan>[];
+    for (var line in page.contents) {
+      if      (line is GeminiText)         spans.add(TextSpan(text: line.line + '\n'));
+      else if (line is GeminiLink)         spans.add(TextSpan(text: line.line + '\n', style: _linkStyle)); // TODO: handle links navigation.
+      else if (line is GeminiHeader1)      spans.add(TextSpan(text: line.line + '\n', style: _header1Style));
+      else if (line is GeminiHeader2)      spans.add(TextSpan(text: line.line + '\n', style: _header2Style));
+      else if (line is GeminiHeader3)      spans.add(TextSpan(text: line.line + '\n', style: _header3Style));
+      else if (line is GeminiPreformatted) spans.add(TextSpan(text: line.line + '\n', style: _preStyle));
+      else if (line is GeminiQuote)        spans.add(TextSpan(text: line.line + '\n', style: _quoteStyle));
+      else if (line is GeminiListItem)     spans.add(TextSpan(text: '* ' + line.line + '\n'));
+      else                                 spans.add(TextSpan(text: line.line + '\n'));
+    }
+    return spans;
+  }
+
+  static const _linkStyle = TextStyle(
+    color: Colors.blue,
+    decoration: TextDecoration.underline,
+    decorationColor: Colors.blue,
+  );
+
+  static const _baseFontSize = 14.0;
+  static const _header1Style = TextStyle(fontSize: 24, fontWeight: FontWeight.bold);
+  static const _header2Style = TextStyle(fontSize: 20, fontStyle: FontStyle.italic);
+  static const _header3Style = TextStyle(fontSize: 18, fontWeight: FontWeight.bold);
+  static const _preStyle = TextStyle(fontFamily: 'Roboto Mono');
+  static const _quoteStyle = TextStyle(fontStyle: FontStyle.italic);
 }
