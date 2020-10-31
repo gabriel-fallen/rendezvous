@@ -14,16 +14,19 @@ class Request {
 
   Future<Response> send() async {
     final socket = await SecureSocket.connect(host, GEMINI_PORT, onBadCertificate: (cerificate) => true ); // FIXME: implement TOFU
+    final path = this.path.startsWith('/') ? this.path : '/' + this.path;
     final url = 'gemini://' + host + path + '\r\n';
     developer.log('Sending Gemini reuest: ' + url);
     socket.write(url);
     final response = await Response.fromStream(socket);
+    response.url = url;
     await socket.close();
     return response;
   }
 }
 
 class Response {
+  String url; // for information purposes
   final _Header _header;
   final Body body;
 

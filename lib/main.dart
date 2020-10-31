@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'package:rendezvous/gemini.dart';
@@ -44,7 +45,8 @@ const String serverError = 'Internal server error';
 
 class _MyHomePageState extends State<MyHomePage> {
   TextEditingController _controller;
-  List<TextSpan> contents;
+  String _currentHost = '';
+  List<TextSpan> _contents;
 
   void initState() {
     super.initState();
@@ -82,7 +84,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   text: TextSpan(
                     // style: DefaultTextStyle.of(context).style,
                     style: TextStyle(color: Colors.black, fontSize: _baseFontSize),
-                    children: contents
+                    children: _contents
                   ),
                 ),
               ),
@@ -95,21 +97,36 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _loadPage(String page) async {
     final uri = Uri.parse(page);
-    final request = new Request(uri.host, uri.path + uri.fragment);
+    final host = (uri.host == null || uri.host.isEmpty) ? _currentHost : uri.host;
+    if (host.isEmpty) {
+      setState(() {
+        _contents = [TextSpan(text: 'Invalid host name', style: TextStyle(color: Colors.red, fontSize: 16))];
+      });
+      return;
+    }
+
+    _currentHost = host;
+    final request = new Request(host, uri.path + uri.fragment);
     final response = await request.send();
     setState(() {
+      if (!response.success) {
+        _contents = [TextSpan(text: serverError, style: TextStyle(color: Colors.red, fontSize: 16))];
+        return;
+      }
+
+      _controller.text = response.url;
       if (response.body is Gemini)
-        contents = _present(response.body as Gemini);
+        _contents = _present(response.body as Gemini);
       else
-        contents = [TextSpan(text: 'Unknown format', style: TextStyle(color: Colors.red, fontSize: 16))];
+        _contents = [TextSpan(text: 'Unknown format', style: TextStyle(color: Colors.red, fontSize: 16))];
     });
   }
 
-  static List<TextSpan> _present(Gemini page) {
+  List<TextSpan> _present(Gemini page) {
     final spans = <TextSpan>[];
     for (var line in page.contents) {
       if      (line is GeminiText)         spans.add(TextSpan(text: line.line + '\n'));
-      else if (line is GeminiLink)         spans.add(TextSpan(text: line.line + '\n', style: _linkStyle)); // TODO: handle links navigation.
+      else if (line is GeminiLink)         spans.add(_buildLink(line));
       else if (line is GeminiHeader1)      spans.add(TextSpan(text: line.line + '\n', style: _header1Style));
       else if (line is GeminiHeader2)      spans.add(TextSpan(text: line.line + '\n', style: _header2Style));
       else if (line is GeminiHeader3)      spans.add(TextSpan(text: line.line + '\n', style: _header3Style));
@@ -119,6 +136,15 @@ class _MyHomePageState extends State<MyHomePage> {
       else                                 spans.add(TextSpan(text: line.line + '\n'));
     }
     return spans;
+  }
+
+  TextSpan _buildLink(GeminiLink gl) {
+    return TextSpan(
+      text: gl.line + '\n',
+      style: _linkStyle,
+      recognizer: TapGestureRecognizer()
+        ..onTap = () => _loadPage(gl.url)
+    );
   }
 
   static const _linkStyle = TextStyle(
