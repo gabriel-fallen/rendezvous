@@ -51,6 +51,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   // navigation state
   List<String> _history = [];
+  int _nredirects = 0;
 
 
   void initState() {
@@ -111,13 +112,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _loadPage(String page) async {
-    var uri = Uri.parse(page);
-    if (!uri.isAbsolute) {
-      final base = Uri.parse(_history.isNotEmpty ? _history.last : '');
-      uri = base.resolve(page);
-    }
-    developer.log('_loadPage: page = "' + page + '"');
-    developer.log('_loadPage: uri = "' + uri.toString() + '"');
+    final uri = _resolve(page);
+    // developer.log('_loadPage: page = "' + page + '"');
+    // developer.log('_loadPage: uri = "' + uri.toString() + '"');
     if (uri.host.isEmpty) {
       setState(() {
         _contents = [TextSpan(text: 'Invalid host name', style: TextStyle(color: Colors.red, fontSize: 16))];
@@ -127,6 +124,24 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final request = new Request(uri.host, uri.path + uri.fragment);
     final response = await request.send();
+
+    // handle redirect
+    if (response.redirect) {
+      if (_nredirects < 5) {
+        _nredirects++;
+        _loadPage(response.meta); // will finish asynchronously
+        return;
+      }
+
+      // report too many redirects
+      setState(() {
+        _contents = [TextSpan(text: 'Too many redirects', style: TextStyle(color: Colors.red, fontSize: 16))];
+      });
+      return;
+    }
+
+    // no redirects
+    _nredirects = 0;
     setState(() {
       if (!response.success) {
         _contents = [
@@ -143,6 +158,15 @@ class _MyHomePageState extends State<MyHomePage> {
       else
         _contents = [TextSpan(text: 'Unknown format', style: TextStyle(color: Colors.red, fontSize: 16))];
     });
+  }
+
+  Uri _resolve(String page) {
+    var uri = Uri.parse(page);
+    if (!uri.isAbsolute) {
+      final base = Uri.parse(_history.isNotEmpty ? _history.last : '');
+      uri = base.resolve(page);
+    }
+    return uri;
   }
 
   void _navigateBack() {

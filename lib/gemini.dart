@@ -33,6 +33,7 @@ class Response {
   int get code => _header.code;
   String get meta => _header.meta;
   bool get success => _header.success;
+  bool get redirect => _header.redirect;
 
   Response(this._header, this.body);
 
@@ -55,6 +56,7 @@ class _Header {
   final String meta;
 
   bool get success => _success(code);
+  bool get redirect => _redirect(code);
 
   _Header(this.code, this.meta);
 
@@ -70,6 +72,7 @@ class _Header {
   }
 
   static bool _success(int code) => code >= 20 && code < 30;
+  static bool _redirect(int code) => code >= 30 && code < 40;
 }
 
 abstract class Body {
