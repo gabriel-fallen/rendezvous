@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -48,7 +50,6 @@ class _MyHomePageState extends State<MyHomePage> {
   List<TextSpan> _contents;
 
   // navigation state
-  String _currentHost = '';
   List<String> _history = [];
 
 
@@ -110,17 +111,21 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _loadPage(String page) async {
-    final uri = Uri.parse(page);
-    final host = (uri.host == null || uri.host.isEmpty) ? _currentHost : uri.host;
-    if (host.isEmpty) {
+    var uri = Uri.parse(page);
+    if (!uri.isAbsolute) {
+      final base = Uri.parse(_history.isNotEmpty ? _history.last : '');
+      uri = base.resolve(page);
+    }
+    developer.log('_loadPage: page = "' + page + '"');
+    developer.log('_loadPage: uri = "' + uri.toString() + '"');
+    if (uri.host.isEmpty) {
       setState(() {
         _contents = [TextSpan(text: 'Invalid host name', style: TextStyle(color: Colors.red, fontSize: 16))];
       });
       return;
     }
 
-    _currentHost = host;
-    final request = new Request(host, uri.path + uri.fragment);
+    final request = new Request(uri.host, uri.path + uri.fragment);
     final response = await request.send();
     setState(() {
       if (!response.success) {
